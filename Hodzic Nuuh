@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leteća Ptica</title>
+    <style>
+        /* Stil za igricu */
+        #gameCanvas {
+            display: none;
+            background-color: skyblue;
+            border: 2px solid #000;
+            margin-top: 20px;
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+        }
+        #gameOver, #congratulations {
+            display: none;
+            font-size: 24px;
+            color: red;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #score {
+            font-size: 24px;
+            color: #000;
+            text-align: center;
+            margin-top: 10px;
+        }
+        #restartButton {
+            display: none;
+            font-size: 18px;
+            margin-top: 10px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .center {
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container center">
+    <div id="levelSection">
+        <h2>Izaberite nivo igre</h2>
+        <select id="levelSelect">
+            <option value="1">Lako</option>
+            <option value="2">Srednje</option>
+            <option value="3">Teško</option>
+        </select>
+        <button id="startGameButton">Start</button>
+    </div>
+
+    <div id="score">Score: 0</div>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <div id="gameOver">Game Over</div>
+    <div id="congratulations">Čestitamo, prešli ste nivo!</div>
+    <div id="restartButton">Kliknite ovde da ponovo pokrenete igru</div>
+</div>
+
+<!-- JavaScript za upravljanje igrom -->
+<script>
+    let gameLoopInterval;
+    let gameOver = false;
+    let birdY, birdSpeed, pipes, gravity, pipeSpeed, pipeGap, pipeWidth, score;
+    let passedPipes = 0; // Broj pređenih prepreka
+
+    document.getElementById('startGameButton').onclick = function() {
+        document.getElementById('levelSection').style.display = 'none';
+        document.getElementById('gameCanvas').style.display = 'block';
+        document.getElementById('score').style.display = 'block';
+        resetGame();
+        startGame();
+    };
+
+    document.getElementById('restartButton').onclick = function() {
+        document.getElementById('restartButton').style.display = 'none';
+        document.getElementById('gameOver').style.display = 'none';
+        document.getElementById('congratulations').style.display = 'none';
+        resetGame();
+        startGame();
+    };
+
+    function resetGame() {
+        const canvas = document.getElementById('gameCanvas');
+        birdY = canvas.height / 2;
+        birdSpeed = 0;
+        pipes = [];
+        gameOver = false;
+        pipeGap = 150; // Razmak između cevi
+        pipeWidth = 50;
+        score = 0;
+        passedPipes = 0;
+
+        // Postavljanje nivoa težine
+        let level = document.getElementById('levelSelect').value;
+        gravity = level == 1 ? 1.5 : level == 2 ? 2 : 2.5;
+        pipeSpeed = level == 1 ? 2 : level == 2 ? 3 : 4;
+        document.getElementById('score').textContent = `Score: ${score}`;
+    }
+
+    function startGame() {
+        gameLoopInterval = requestAnimationFrame(gameLoop);
+
+        document.addEventListener('keydown', function(event) {
+            if (event.code === 'Space' && !gameOver) {
+                birdSpeed = -10; // Let ptice prema gore
+            }
+        });
+    }
+
+    function createPipe() {
+        let canvas = document.getElementById('gameCanvas');
+        let pipeHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 100)) + 50;
+        pipes.push({
+            x: canvas.width,
+            y: pipeHeight,
+        });
+    }
+
+    function gameLoop() {
+        if (gameOver) {
+            document.getElementById('gameOver').style.display = 'block';
+            document.getElementById('restartButton').style.display = 'block';
+            cancelAnimationFrame(gameLoopInterval);
+            return;
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Čišćenje platna
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Crtanje ptice
+        ctx.fillStyle = "yellow";
+        ctx.fillRect(50, birdY, 20, 20);
+
+        // Kretanje ptice
+        birdY += birdSpeed;
+        birdSpeed += gravity;
+
+        // Crtanje i pomeranje cevi
+        pipes.forEach(pipe => {
+            pipe.x -= pipeSpeed;
+
+            // Gornja cev
+            ctx.fillStyle = "green";
+            ctx.fillRect(pipe.x, 0, pipeWidth, pipe.y);
+
+            // Donja cev
+            ctx.fillRect(pipe.x, pipe.y + pipeGap, pipeWidth, canvas.height - pipe.y - pipeGap);
+
+            // Detekcija sudara sa cevima
+            if (50 + 20 > pipe.x && 50 < pipe.x + pipeWidth &&
+                (birdY < pipe.y || birdY + 20 > pipe.y + pipeGap)) {
+                gameOver = true;
+            }
+
+            // Detekcija kada cevi izađu sa ekrana
+            if (pipe.x + pipeWidth < 0) {
+                pipes.shift();
+                score += 1;
+                passedPipes += 1;
+                pipeSpeed *= 1.01; // Povećanje brzine za 1% nakon svake prepreke
+ 
